@@ -3,13 +3,6 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import numpy as np
-from openai import AzureOpenAI
-import ollama
-import time
-from dotenv import load_dotenv
-import os
-
-load_dotenv()
 
 # Set page config
 st.set_page_config(
@@ -17,68 +10,6 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded"
 )
-
-# Initialize API clients
-@st.cache_resource
-def init_clients():
-    azure_client = AzureOpenAI(
-        azure_endpoint = os.getenv("AZURE_ENDPOINT"),
-        api_key = os.getenv("API_KEY"),
-        api_version = os.getenv("API_VERSION")
-    )
-    return azure_client
-
-# Helper functions for model interaction
-def create_prompt(question: str) -> str:
-    prompt = f"""Solve this mathematics question step by step.
-
-    QUESTION:
-    {question}
-
-    REQUIREMENTS:
-    1. Analyze the question carefully
-    2. Show ALL mathematical steps clearly
-    3. Calculate values precisely
-    4. Evaluate each step systematically
-
-    Your complete solution:"""
-    return prompt
-
-def get_gpt4_response(client, prompt: str) -> tuple:
-    start_time = time.time()
-    try:
-        response = client.chat.completions.create(
-            model="gpt-4o",
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0,
-            max_tokens=2000
-        )
-        response_text = response.choices[0].message.content
-        time_taken = time.time() - start_time
-        return response_text, time_taken
-    except Exception as e:
-        return f"Error: {str(e)}", 0
-
-def get_tinyllama_response(prompt: str) -> tuple:
-    start_time = time.time()
-    try:
-        response = ollama.generate(
-            model='tinyllama',
-            prompt=prompt,
-            options={
-                'num_predict': 1000,
-                'top_k': 20,
-                'top_p': 0.9,
-                'repeat_penalty': 1.1,
-                'temperature': 0.7,
-                'stop': ['Question:', 'QUESTION:', '\n\n']
-            }
-        )
-        response_text = response['response']
-        time_taken = time.time() - start_time
-        return response_text, time_taken
-    except Exception as e:
-        return f"Error: {str(e)}", 0
 
 # Define data for each section
 abstract_algebra_data = pd.DataFrame({
@@ -165,20 +96,12 @@ def create_bar_chart(data, title):
     )
     st.plotly_chart(fig, use_container_width=True)
 
-# Initialize the app
-try:
-    azure_client = init_clients()
-except Exception as e:
-    st.error(f"Error initializing API clients: {str(e)}")
-    st.stop()
-
 # Main app layout
 st.title("Math Model Evaluation Dashboard")
 
 tabs = st.tabs([
     "Subject Performance",
-    "Detailed Analysis",
-    "Try Models"
+    "Detailed Analysis"
 ])
 
 with tabs[0]:
@@ -247,32 +170,6 @@ with tabs[1]:
         with col2:
             create_radar_chart(high_school_math_data, "High School Mathematics Performance Radar")
         create_bar_chart(high_school_math_data, "High School Mathematics Performance Comparison")
-
-with tabs[2]:
-    st.header("Try the Models")
-    st.markdown("Enter a mathematics question to see how both models would respond")
-    
-    user_question = st.text_area("Enter your mathematics question:", height=100)
-    
-    if st.button("Submit Question"):
-        if user_question:
-            with st.spinner("Getting responses from both models..."):
-                prompt = create_prompt(user_question)
-                
-                col1, col2 = st.columns(2)
-                with col1:
-                    st.markdown("### GPT-4 Response")
-                    response, time_taken = get_gpt4_response(azure_client, prompt)
-                    st.markdown(response)
-                    st.markdown(f"*Response time: {time_taken:.2f} seconds*")
-                
-                with col2:
-                    st.markdown("### TinyLlama Response")
-                    response, time_taken = get_tinyllama_response(prompt)
-                    st.markdown(response)
-                    st.markdown(f"*Response time: {time_taken:.2f} seconds*")
-        else:
-            st.warning("Please enter a question first.")
 
 # Footer
 st.markdown("---")
