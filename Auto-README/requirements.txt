@@ -1,0 +1,8 @@
+langchain
+langchain-google-genai==0.0.9
+google-generativeai==0.3.2
+crewai
+streamlit
+python-dotenv
+pydantic
+pyperclip
